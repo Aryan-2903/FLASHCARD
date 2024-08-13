@@ -1,44 +1,41 @@
-import db from '../db.js';
-import Cors from 'cors';
+import express from 'express';
+import db from './db.js';
+import cors from 'cors';
 
-// Initialize CORS middleware
-const cors = Cors({
-  methods: ['GET', 'POST', 'DELETE'],
-  origin: '*',
+const app = express();
+app.use(express.json());
+app.use(cors());
+
+// Get all flashcards
+app.get('/api/flashcards', async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM flashcard');
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
-export default async function handler(req, res) {
-  // Run the CORS middleware
-  await cors(req, res);
-
-  if (req.method === 'GET') {
-    // Get all flashcards
-    try {
-      const [rows] = await db.query('SELECT * FROM flashcard');
-      res.json(rows);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  } else if (req.method === 'POST') {
-    // Add a new flashcard
-    const { Question, Answer } = req.body;
-    try {
-      const [result] = await db.query('INSERT INTO flashcard (Question, Answer) VALUES (?, ?)', [Question, Answer]);
-      res.status(201).json({ id: result.insertId, Question, Answer });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  } else if (req.method === 'DELETE') {
-    // Delete a flashcard
-    const { id } = req.query;
-    try {
-      await db.query('DELETE FROM flashcard WHERE id = ?', [id]);
-      res.status(204).end();
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  } else {
-    res.setHeader('Allow', ['GET', 'POST', 'DELETE']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+// Add a new flashcard
+app.post('/api/flashcards', async (req, res) => {
+  const { Question, Answer } = req.body;
+  try {
+    const [result] = await db.query('INSERT INTO flashcard (Question, Answer) VALUES (?, ?)', [Question, Answer]);
+    res.status(201).json({ id: result.insertId, Question, Answer });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
-}
+});
+
+// Delete a flashcard
+app.delete('/api/flashcards/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await db.query('DELETE FROM flashcard WHERE id = ?', [id]);
+    res.status(204).end();
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+export default app;
